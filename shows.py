@@ -26,6 +26,5 @@ else:
     print("An error occurred.")
 
 rows = session.execute("SELECT * FROM social_data.posts LIMIT 10")
-
 for row in rows:
     print(row)
