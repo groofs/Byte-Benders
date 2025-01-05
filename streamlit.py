@@ -1,9 +1,6 @@
 import json
 import requests
 import streamlit as st
-import time
-import matplotlib.pyplot as plt
-import numpy as np
 from typing import Optional
 
 # Base URL and identifiers for the flow
@@ -48,31 +45,23 @@ def run_flow(message: str,
         "Authorization": "Bearer " + application_token,
         "Content-Type": "application/json"
     }
-
-    # Track the start time
-    start_time = time.time()
     
     # Send the request to the flow
     response = requests.post(api_url, json=payload, headers=headers)
     
-    # Calculate response time
-    response_time = time.time() - start_time
-
     # Check if the response is valid
     if response.status_code == 200:
-        return response.json(), response_time
+        return response.json()
     else:
-        return {"error": "Failed to fetch response", "details": response.text}, response_time
+        return {"error": "Failed to fetch response", "details": response.text}
 
 # Streamlit app for UI
 def main():
     st.title("Social Media Performance Analysis")
 
-    # Initialize session state for messages and performance stats
+    # Initialize session state for messages
     if "messages" not in st.session_state:
         st.session_state["messages"] = []
-    if "response_times" not in st.session_state:
-        st.session_state["response_times"] = []
 
     # Input form for user message
     with st.form(key="input_form"):
@@ -97,16 +86,15 @@ def main():
             # Run the flow
             try:
                 with st.spinner("Running flow..."):
-                    response, response_time = run_flow(message, tweaks=tweaks)
+                    response = run_flow(message, tweaks=tweaks)
                     
                     if "error" in response:
                         st.error(response["details"])
                     else:
                         response_text = response.get("outputs", [{}])[0].get("outputs", [{}])[0].get("results", {}).get("message", {}).get("text", "No response from flow.")
                         
-                        # Save the chat history and response time in the session state
+                        # Save the chat history in the session state
                         st.session_state["messages"].append({"user": message, "bot": response_text})
-                        st.session_state["response_times"].append(response_time)
 
             except Exception as e:
                 st.error(f"Error: {e}")
@@ -117,31 +105,6 @@ def main():
         st.markdown(f"**You:** {chat['user']}")
         st.markdown(f"**Bot:** {chat['bot']}")
         st.divider()  # Adds a divider between chat messages for better readability
-
-    # Display performance metrics (response times and message statistics)
-    st.subheader("Performance Metrics")
-    
-    # Display response time graph
-    if st.session_state["response_times"]:
-        st.write("Response Time (in seconds) for each request:")
-        response_times = st.session_state["response_times"]
-        st.bar_chart(response_times)
-    
-    # Display message length statistics
-    message_lengths = [len(chat['user']) for chat in st.session_state["messages"]]
-    if message_lengths:
-        st.write("Message Length Statistics")
-        st.write(f"Average message length: {np.mean(message_lengths):.2f}")
-        st.write(f"Max message length: {max(message_lengths)}")
-        st.write(f"Min message length: {min(message_lengths)}")
-        
-        # Message length distribution plot
-        plt.figure(figsize=(10, 6))
-        plt.hist(message_lengths, bins=10, color='skyblue', edgecolor='black')
-        plt.title("Distribution of Message Lengths")
-        plt.xlabel("Message Length")
-        plt.ylabel("Frequency")
-        st.pyplot(plt)
 
 # Run the Streamlit app
 if __name__ == "__main__":
